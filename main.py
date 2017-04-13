@@ -5,12 +5,14 @@ import time
 import pymysql
 import itchat
 import settings
+from PooledDB import Mysql
 
+mysql = Mysql()
 master={}
 @itchat.msg_register(itchat.content.NOTE, isGroupChat=True)
 def text_reply(msg):
     print msg
-    returnmsg = ""
+    groupInfo=mysql.getOne("""select * from wechat_group where group_ids=%s""", msg['FromUserName'])
     try:
         new_member_name = re.compile(u'"(.*?)"邀请"(.*?)"加入了群聊').findall(msg['Content'])
         if len(new_member_name) > 0:
@@ -23,6 +25,7 @@ def text_reply(msg):
                 for user in ml:
                     if user["NickName"]==invertuser[1]:
                         print u"新用户%s"%user["UserName"]
+                        # saveUser(user["UserName"],user["NickName"],,groupInfo["NickName"])
                     else:
                         print u"已存在%s" % user["UserName"]
         else:
@@ -52,26 +55,20 @@ def dateFormat(strtime):
     x = time.localtime(strtime)
     return time.strftime('%Y-%m-%d %H:%M:%S', x)
 def saveUser(userName,NickName,InviteUser,groupName):
-    connect = pymysql.connect(
-        host=settings.MYSQL_HOST,
-        db=settings.MYSQL_DBNAME,
-        user=settings.MYSQL_USER,
-        passwd=settings.MYSQL_PASSWD,
-        charset='utf8',
-        use_unicode=True)
-    cursor = connect.cursor()
-    cursor.execute("""select * from wechat_users where  group_name=%s and username=%s""", (groupName,InviteUser))
-    ret = cursor.fetchone()
-    if ret:
-        cursor.execute(
-            """INSERT INTO wechat_users (username, nick_name, group_name, create_time, invite_num, pid, master) VALUES ( %s,  %s, %s,now(), 0, %s, 0)""",
-                (userName,NickName,groupName,ret["id"]))
-        connect.commit()
-    else:
-        print""
-    connect.commit()
-    cursor.close()
-    connect.close()
+    inviteId=0;
+    if InviteUser!="":
+        result= mysql.getOne("""select * from wechat_users where  group_name=%s and username=%s""", (groupName,InviteUser))
+        if result:
+            inviteId=mysql.insertOne(
+                """INSERT INTO wechat_users (username, nick_name, group_name, create_time, invite_num, pid, master) VALUES ( %s,  %s, %s,now(), 0, %s, 0)""",
+                    (userName,NickName,groupName,0))
+        else:
+            inviteId=result["id"]
+
+    mysql.insertOne(
+            """INSERT INTO wechat_users (username, nick_name, group_name, create_time, invite_num, pid, master) VALUES ( %s,  %s, %s,now(), %s, %s, 0)""",
+            (userName, NickName, groupName,0,inviteId))
+    mysql.update("""update wechat_users set invite_num=invite_num+1 where id=%s """,inviteId);
 
 def getMaster(groupname):
     connect = pymysql.connect(
@@ -89,6 +86,24 @@ def getMaster(groupname):
     connect.close()
     return ret["username"]
 def afterLogin():
+    chatrooms=itchat.get_chatrooms()
+    for chatroom in chatrooms:
+        if chatroom["IsOwner"]:
+            mygroup=mysql.getOne("""select * from wechat_group where group_name=%s""",chatroom["NickName"])
+            memberList = itchat.update_chatroom(chatroom['UserName'], detailedMember=True)
+            for member in memberList["MemberList"]:
+                result = mysql.getOne("select * from wechat_users where username=%s", member["UserName"])
+                if result:
+                    print "已存在用户" + member["NickName"]
+                else:
+                    saveUser(member["UserName"], member["NickName"], "", chatroom["NickName"])
+            if mygroup:
+                mysql.update("update wechat_group set group_ids=%s where group_name=%s",(chatroom["UserName"],chatroom["NickName"]))
+            else:
+                mysql.insertOne("INSERT INTO wechat_group (group_name, group_ids, owner, manager_id, remark) VALUES ( %s, %s, 0, 0, %s)",(chatroom["NickName"],chatroom["UserName"]," "))
+
+    # print chatroom
+def saveGroup(groupNames,groupIds):
     connect = pymysql.connect(
         host=settings.MYSQL_HOST,
         db=settings.MYSQL_DBNAME,
@@ -96,13 +111,7 @@ def afterLogin():
         passwd=settings.MYSQL_PASSWD,
         charset='utf8',
         use_unicode=True)
-    cursor =  connect.cursor()
-    cursor.execute("""select * from wp_postmeta """)
-    ret = cursor.fetchone()
-    cursor.close()
-    # conn.commit()
-    connect.close()
-    print ret
+    cursor = connect.cursor()
 
 itchat.auto_login(loginCallback=afterLogin)
 itchat.run()
