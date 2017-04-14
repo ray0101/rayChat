@@ -122,6 +122,8 @@ class Mysql(object):
             count = self._cursor.execute(sql)
         else:
             count = self._cursor.execute(sql, param)
+
+        self._conn.commit()
         return count
 
     def update(self, sql, param=None):
