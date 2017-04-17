@@ -3,14 +3,16 @@ CREATE TABLE
   wechat_users
 (
   id INT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  username varchar(100) default '' COMMENT'微信用户名',
+  username varchar(100) default '' COMMENT'微信用户名字符串',
   nick_name varchar(100) default '' COMMENT '微信昵称',
+  back_name varchar(100) default '' COMMENT '群备注昵称',
   group_name varchar(100) default '' COMMENT'群名称',
-  wechat_id varhcar(100) default '' COMMENT '微信号',
+  wechat_id varchar(100) default '' COMMENT '微信号',
   create_time TIMESTAMP  COMMENT '加入时间',
   invite_num int default 0 COMMENT '邀请人数',
   pid int default 0 COMMENT '被邀请人ID' ,
   master int default 0 COMMENT '管理员id',
+  remark varchar(200) COMMENT '备注',
    PRIMARY KEY (id)
 )  ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='微信组邀请表';
 CREATE TABLE
