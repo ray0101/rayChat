@@ -6,14 +6,19 @@ import pymysql
 import itchat
 import settings
 from PooledDB import Mysql
-
+import sys
+default_encoding = 'utf-8'
+if sys.getdefaultencoding() != default_encoding:
+    reload(sys)
+    sys.setdefaultencoding(default_encoding)
 mysql = Mysql()
 master = {}
 
 
 @itchat.msg_register(itchat.content.NOTE, isGroupChat=True)
 def text_reply(msg):
-    print msg
+    print msg["Content"]
+    print  msg["Content"].find(u"你邀请")
     groupInfo = mysql.getOne("""select * from wechat_group where group_ids=%s""", msg['FromUserName'])
     try:
         new_member_name = re.compile(u'"(.*?)"邀请"(.*?)"加入了群聊').findall(msg['Content'])
@@ -22,36 +27,26 @@ def text_reply(msg):
             if getUser("",invertuser[1],groupInfo[1]):
                 print "已经邀请过该用户"
             else:
-              result= getUser("",invertuser[0],groupInfo[1])
-              if result:
-                    itchat.send(u'@Ray %s\u2005邀请了 @%s\u2005' % (invertuser[0], invertuser[1]), msg['FromUserName'])
-                    itchat.send(u'欢迎新成员 @%s\u2005' % invertuser[1], msg['FromUserName'])
-                    memberList = itchat.update_chatroom(msg['FromUserName'], detailedMember=True)
-                    ml = memberList["MemberList"]
-                    if len(ml) > 0:
-                        for user in ml:
-                            if user["NickName"] == invertuser[1]:
-                                print u"新用户%s" % user["UserName"]
-                                if invertuser[1].find(memberList["NickName"]) >= 0:
-                                    print "has exists" + user["NickName"] + "" + user["Alias"]
-                                else:
-                                    id = saveUser(user["UserName"], user["NickName"], user["Alias"], invertuser[0],
-                                                  groupInfo[1])
-                                    if id:
-                                        itchat.set_alias(user["UserName"],"%s%s"%(memberList["NickName"],id))
-                            else:
-                                print u"已存在%s" % user["UserName"]
-                    else:
-                        new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
-                        if len(new_member_name) > 0:
-                            invertuser = new_member_name[0]
-                            itchat.send(u'@Ray %s\u2005邀请了 @%s\u2005' % (invertuser[1], invertuser[0]), msg['FromUserName'])
-                            itchat.send(u'欢迎新成员 @%s\u2005' % invertuser[0], msg['FromUserName'])
-                            memberList = itchat.update_chatroom(msg['FromUserName'], detailedMember=True)
-                            print memberList
-     except AttributeError:
+                welcomNewMember(invertuser[1], invertuser[0], groupInfo[1],  msg['FromUserName'])
+        elif msg["Content"].find(u"你邀请")>=0:
+            new_member_name = re.compile(u'你邀请"(.*?)"加入了群聊').findall(msg['Content'])
+            if len(new_member_name) > 0:
+                invertuser = new_member_name[0]
+                if getUser("",invertuser, groupInfo[1]):
+                    print "已经邀请过该用户"
+                else:
+                    welcomNewMember(invertuser, "", groupInfo[1], msg['FromUserName'])
+        else:
+            new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
+            if len(new_member_name) > 0:
+                invertuser = new_member_name[0]
+                welcomNewMember(invertuser[1], invertuser[0], groupInfo[1], msg['FromUserName'])
+            else:
+                print msg["Content"]
+    except AttributeError:
                 print "error"
                 return
+    print "done"
 
 
 @itchat.msg_register(itchat.content.TEXT, isGroupChat=True)
@@ -81,7 +76,7 @@ def getUser(wechatId,remarkName,groupName):
 def saveUser(userName, NickName, wxId, InviteUser, groupName,back_name):
     inviteId = 0;
     if InviteUser != "":
-        result = mysql.getOne("""select * from wechat_users where  group_name=%s and nick_name=%s""",
+        result = mysql.getOne("""select * from wechat_users where  group_name=%s and back_name=%s""",
                               (groupName, InviteUser))
         if result:
             inviteId = result[0]
@@ -94,9 +89,49 @@ def saveUser(userName, NickName, wxId, InviteUser, groupName,back_name):
                      (userName, NickName, wxId));
     else:
         mysql.update("""update wechat_users set invite_num=invite_num+1 where id=%s """, inviteId);
-        return mysql.insertOne(
+        newid=mysql.insertOne(
             """INSERT INTO wechat_users (username, nick_name, group_name, create_time, invite_num, pid, master,wechat_id,back_name) VALUES ( %s,  %s, %s,now(), %s, %s, 0,%s,%s)""",
             (userName, NickName, groupName, 0, inviteId, wxId,back_name))
+        if back_name=="":
+            mysql.update("""UPDATE wechat_users set back_name=%s where id=%s""",('%s%s'%(groupName,newid),newid))
+            myback=u"%s%s"% (groupName, newid)
+            itchat.set_alias(userName, myback)
+        return newid
+
+def welcomNewMember(NickName,invteName,GroupName,FromId):
+    if getUser("", NickName, GroupName):
+        print "已经邀请过该用户"
+    else:
+        #获取邀请人信息
+        result = getUser("",invteName, GroupName)
+        inviteNickName=""
+        inviteNum=0
+        if result:
+            inviteNickName=result[2]
+            inviteNum=int(result[7])+1
+            #获取群成员列表
+        chatRoom = itchat.update_chatroom(FromId, detailedMember=True)
+        ml = chatRoom["MemberList"]
+        for user in ml:
+            if user["NickName"] == NickName:
+                if NickName.find(chatRoom["NickName"])>=0:
+                    print "has exists" + user["NickName"] + "" + user["Alias"]
+                else:
+                    itchat.send(u'欢迎新成员 @%s\u2005' % NickName, FromId)
+                    if inviteNum>0:
+                        itchat.send(u'%s\u2005邀请了 @%s\u2005' % (result[2], NickName), FromId)
+
+
+                    id = saveUser(user["UserName"], user["NickName"], user["Alias"], invteName,
+                                          GroupName,"")
+                    User = getUser("", invteName, GroupName)
+                    if User:
+                        itchat.send(u'@%s\u2005已经邀请了%s个成员' % (result[2], result[7]), FromId)
+                    if id:
+                        itchat.set_alias(user["UserName"], "%s%s" % (chatRoom["NickName"], id))
+                        print "设置备注%s%s" % (chatRoom["NickName"], id)
+            else:
+                print u"已存在%s" % user["UserName"]
 
 
 @itchat.msg_register(itchat.content.SYSTEM)
@@ -108,7 +143,7 @@ def get_uin(msg):
         if chatroom["IsOwner"]:
             mygroup = mysql.getOne("""select * from wechat_group where group_name=%s""", chatroom["NickName"])
             for user in chatroom["MemberList"]:
-                saveUser(user["UserName"], user["NickName"], user["Alias"], "", chatroom["NickName"])
+                saveUser(user["UserName"], user["NickName"], user["Alias"], "", chatroom["NickName"],"")
             if mygroup:
                 mysql.update("""update wechat_group set group_ids=%s where group_name=%s""",
                              (chatroom["UserName"], chatroom["NickName"]))

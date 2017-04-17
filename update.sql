@@ -1,3 +1,4 @@
+CREATE DATABASE wechat_tool_db;
 DROP TABLE IF EXISTS  wechat_users;
 CREATE TABLE
   wechat_users
