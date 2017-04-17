@@ -5,6 +5,7 @@ import time
 import pymysql
 import itchat
 import settings
+import logging
 from PooledDB import Mysql
 import sys
 default_encoding = 'utf-8'
@@ -17,12 +18,12 @@ master = {}
 
 @itchat.msg_register(itchat.content.NOTE, isGroupChat=True)
 def text_reply(msg):
-    print msg["Content"]
-    print  msg["Content"].find(u"你邀请")
+    logging.debug(msg["Content"])
     groupInfo = mysql.getOne("""select * from wechat_group where group_ids=%s""", msg['FromUserName'])
     try:
         new_member_name = re.compile(u'"(.*?)"邀请"(.*?)"加入了群聊').findall(msg['Content'])
         if len(new_member_name) > 0:
+            logging.debug("邀请方式")
             invertuser = new_member_name[0]
             if getUser("",invertuser[1],groupInfo[1]):
                 print "已经邀请过该用户"
@@ -35,6 +36,7 @@ def text_reply(msg):
                 if getUser("",invertuser, groupInfo[1]):
                     print "已经邀请过该用户"
                 else:
+                    log
                     welcomNewMember(invertuser, "", groupInfo[1], msg['FromUserName'])
         else:
             new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
@@ -99,6 +101,7 @@ def saveUser(userName, NickName, wxId, InviteUser, groupName,back_name):
         return newid
 
 def welcomNewMember(NickName,invteName,GroupName,FromId):
+    logging.debug("欢迎新成员:%s %s %s"%(NickName,GroupName))
     if getUser("", NickName, GroupName):
         print "已经邀请过该用户"
     else:
@@ -114,6 +117,7 @@ def welcomNewMember(NickName,invteName,GroupName,FromId):
         ml = chatRoom["MemberList"]
         for user in ml:
             if user["NickName"] == NickName:
+                logging.debug("找到新用户%s" % (NickName, GroupName))
                 if NickName.find(chatRoom["NickName"])>=0:
                     print "has exists" + user["NickName"] + "" + user["Alias"]
                 else:
