@@ -36,7 +36,6 @@ def text_reply(msg):
                 if getUser("",invertuser, groupInfo[1]):
                     print "已经邀请过该用户"
                 else:
-                    log
                     welcomNewMember(invertuser, "", groupInfo[1], msg['FromUserName'])
         else:
             new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
@@ -50,12 +49,26 @@ def text_reply(msg):
                 return
     print "done"
 
+@itchat.msg_register(itchat.content.TEXT, isGroupChat=False)
+def text_reply(msg):
+    fromuser = msg["FromUserName"]
+    print fromuser
+    print u"[%s] %s：%s" % (dateFormat(msg["CreateTime"]),msg["User"]["NickName"],msg["Text"])
+    # print msg["FromUserName"]
+    # print msg["ToUserName"]
+    # if master.has_key(msg["FromUserName"]):
+    #     print fromuser
+    # else:
+    #     master[msg["FromUserName"]]=getMaster(msg["FromUserName"])
+
 
 @itchat.msg_register(itchat.content.TEXT, isGroupChat=True)
 def text_reply(msg):
     fromuser = msg["FromUserName"]
-    print msg["FromUserName"]
-    print msg["ToUserName"]
+    print fromuser
+    print u"[%s][%s] %s：%s" % (dateFormat(msg["CreateTime"]),msg["User"]["NickName"],msg["ActualNickName"],msg["Text"])
+    # print msg["FromUserName"]
+    # print msg["ToUserName"]
     # if master.has_key(msg["FromUserName"]):
     #     print fromuser
     # else:
@@ -101,7 +114,7 @@ def saveUser(userName, NickName, wxId, InviteUser, groupName,back_name):
         return newid
 
 def welcomNewMember(NickName,invteName,GroupName,FromId):
-    logging.debug("欢迎新成员:%s %s %s"%(NickName,GroupName))
+    logging.debug("欢迎新成员:%s %s"%(NickName,GroupName))
     if getUser("", NickName, GroupName):
         print "已经邀请过该用户"
     else:
@@ -117,7 +130,7 @@ def welcomNewMember(NickName,invteName,GroupName,FromId):
         ml = chatRoom["MemberList"]
         for user in ml:
             if user["NickName"] == NickName:
-                logging.debug("找到新用户%s" % (NickName, GroupName))
+                logging.debug("找到新用户%s" % NickName)
                 if NickName.find(chatRoom["NickName"])>=0:
                     print "has exists" + user["NickName"] + "" + user["Alias"]
                 else:
@@ -169,7 +182,17 @@ def afterLogin():
 
 
         # print chatroom
-
+def get_uin(msg):
+    if msg['SystemInfo'] != 'uins': return
+    ins = itchat.instanceList[0]
+    fullContact = ins.memberList + ins.chatroomList + ins.mpList
+    print('** Uin Updated **')
+    for username in msg['Text']:
+        member = itchat.utils.search_dict_list(
+            fullContact, 'UserName', username)
+        print(('%s: %s' % (
+            member.get('NickName', ''), member['Uin']))
+            .encode(sys.stdin.encoding, 'replace'))
 
 def saveGroup(groupNames, groupIds):
     connect = pymysql.connect(

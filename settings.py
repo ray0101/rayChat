@@ -1,9 +1,9 @@
-
-MYSQL_HOST = 'xxx'
-MYSQL_DBNAME = 'wzxx8db'         #数据库名字，请修改
-MYSQL_USER = 'xx'             #数据库账号，请修改
-MYSQL_PASSWD = 'sss'         #数据库密码，请修改
-MYSQL_PORT = 3306               #数据库端口，在dbhelper中使用
+#!/usr/bin/env python3
+# coding: utf-8
+MYSQL_HOST = '3339'
+MYSQL_DBNAME = '333'         #数据库名字，请修改
+MYSQL_USER = '333'             #数据库账号，请修改
+MYSQL_PASSWD = '*ff333*s%'         #数据库密码，请修改
 MYSQL_PORT = 3306               #数据库端口，在dbhelper中使用
 
 #数据库连接编码

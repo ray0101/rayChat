@@ -16,8 +16,7 @@ CREATE TABLE
   remark varchar(200) COMMENT '备注',
    PRIMARY KEY (id)
 )  ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='微信组邀请表';
-CREATE TABLE
-  wechat_group
+CREATE TABLE  wechat_group
 (
   id INT NOT NULL AUTO_INCREMENT COMMENT 'ID',
   group_name varchar(100) default '' COMMENT'讨论组名称',
