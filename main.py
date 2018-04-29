@@ -24,35 +24,35 @@ selfInfo={}
 @itchat.msg_register(itchat.content.NOTE, isGroupChat=True)
 def text_reply(msg):
     logging.debug(msg["Content"])
-    # groupInfo = mysql.getOne("""select * from wechat_group where group_ids=%s""", msg['FromUserName'])
-    # try:
-    #     new_member_name = re.compile(u'"(.*?)"邀请"(.*?)"加入了群聊').findall(msg['Content'])
-    #     if len(new_member_name) > 0:
-    #         logging.debug("邀请方式")
-    #         invertuser = new_member_name[0]
-    #         if getUser("", invertuser[1], groupInfo[1]):
-    #             print "已经邀请过该用户"
-    #         else:
-    #             welcomNewMember(invertuser[1], invertuser[0], groupInfo[1], msg['FromUserName'])
-    #     elif msg["Content"].find(u"你邀请") >= 0:
-    #         new_member_name = re.compile(u'你邀请"(.*?)"加入了群聊').findall(msg['Content'])
-    #         if len(new_member_name) > 0:
-    #             invertuser = new_member_name[0]
-    #             if getUser("", invertuser, groupInfo[1]):
-    #                 print "已经邀请过该用户"
-    #             else:
-    #                 welcomNewMember(invertuser, "", groupInfo[1], msg['FromUserName'])
-    #     else:
-    #         new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
-    #         if len(new_member_name) > 0:
-    #             invertuser = new_member_name[0]
-    #             welcomNewMember(invertuser[1], invertuser[0], groupInfo[1], msg['FromUserName'])
-    #         else:
-    #             print msg["Content"]
-    # except AttributeError:
-    #     print "error"
-    #     return
-    # print "done"
+    groupInfo = mysql.getOne("""select * from wechat_group where group_ids=%s""", msg['FromUserName'])
+    try:
+        new_member_name = re.compile(u'"(.*?)"邀请"(.*?)"加入了群聊').findall(msg['Content'])
+        if len(new_member_name) > 0:
+            logging.debug("邀请方式")
+            invertuser = new_member_name[0]
+            if getUser("", invertuser[1], groupInfo[1]):
+                print "已经邀请过该用户"
+            else:
+                welcomNewMember(invertuser[1], invertuser[0], groupInfo[1], msg['FromUserName'])
+        elif msg["Content"].find(u"你邀请") >= 0:
+            new_member_name = re.compile(u'你邀请"(.*?)"加入了群聊').findall(msg['Content'])
+            if len(new_member_name) > 0:
+                invertuser = new_member_name[0]
+                if getUser("", invertuser, groupInfo[1]):
+                    print "已经邀请过该用户"
+                else:
+                    welcomNewMember(invertuser, "", groupInfo[1], msg['FromUserName'])
+        else:
+            new_member_name = re.compile(u'"(.*?)"通过扫描"(.*?)"分享的二维码加入群聊').findall(msg['Content'])
+            if len(new_member_name) > 0:
+                invertuser = new_member_name[0]
+                welcomNewMember(invertuser[1], invertuser[0], groupInfo[1], msg['FromUserName'])
+            else:
+                print msg["Content"]
+    except AttributeError:
+        print "error"
+        return
+    print "done"
 
 
 @itchat.msg_register(itchat.content.TEXT, isGroupChat=False)
